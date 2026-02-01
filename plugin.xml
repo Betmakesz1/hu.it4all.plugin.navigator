@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension id="mdmEventMarker" point="org.eclipse.core.resources.markers" name="MDM Event Marker">
+      <super type="org.eclipse.core.resources.textmarker"/>
+      <persistent value="false"/>
+   </extension>
+
+   <extension point="org.eclipse.ui.editors.annotationTypes">
+      <type name="com.company.mdm.navigation.eventAnnotation"
+            markerType="com.company.mdm.navigation.mdmEventMarker">
+      </type>
+   </extension>
+
+   <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="com.company.mdm.navigation.eventAnnotation"
+            verticalRulerPreferenceKey="mdmEventVerticalRuler"
+            verticalRulerPreferenceValue="true"
+            highlightPreferenceKey="mdmEventHighlight"
+            highlightPreferenceValue="false"
+            icon="icons/event_marker.png"
+            label="MDM Event Publisher">
+      </specification>
+   </extension>
+
+   <extension point="org.eclipse.ui.ide.markerResolution">
+      <markerResolutionGenerator
+            class="com.company.mdm.navigation.markers.NavigationResolution"
+            markerType="com.company.mdm.navigation.mdmEventMarker">
+      </markerResolutionGenerator>
+   </extension>
+
+</plugin>
