@@ -24,25 +24,27 @@ public class EventVisitor extends ASTVisitor {
 
     @Override
     public boolean visit(MethodInvocation node) {
-        //Ellenőrizzük a metódus nevét: "publisher"
-        if ("publisher".equals(node.getName().getIdentifier())) {
-        	//TODO rugalmasabb legyen, csak példa
+        String methodName = node.getName().getIdentifier();
+
+        if ("publisher".equals(methodName)) {
+            System.out.println("    >>> FOUND 'publisher' method call!");
             
-            //Ellenőrizzük, hogy az objektum, amin hívják, az "invocationApi"-e (rugalmasabb legyen!!)
-            // Fals pozitiv szűrés
             Expression expression = node.getExpression();
             if (expression != null && expression.toString().contains("invocationApi")) {
+                System.out.println("    >>> FOUND invocationApi.publisher()!");
                 
                 List<?> arguments = node.arguments();
+                System.out.println("    >>> Arguments count: " + arguments.size());
                 
                 if (arguments.size() >= 2) {
                     Object secondArg = arguments.get(1);
+                    System.out.println("    >>> Second arg type: " + secondArg.getClass().getSimpleName());
                     
                     if (secondArg instanceof TypeLiteral) {
                         TypeLiteral typeLiteral = (TypeLiteral) secondArg;
                         String interfaceName = typeLiteral.getType().toString();
+                        System.out.println("    >>> Interface name: " + interfaceName);
                         
-                        // Pozíció és sorszám meghatározása
                         int startPosition = node.getStartPosition();
                         int length = node.getLength();
                         int lineNumber = -1;
@@ -52,7 +54,7 @@ public class EventVisitor extends ASTVisitor {
                             lineNumber = cu.getLineNumber(startPosition);
                         }
 
-                        //Marker létrehozása a callback-en keresztül
+                        System.out.println("    >>> CREATING MARKER at line " + lineNumber);
                         markerCreator.addMarker(startPosition, length, interfaceName, lineNumber);
                     }
                 }

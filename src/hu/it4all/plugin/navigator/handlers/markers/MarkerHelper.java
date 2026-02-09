@@ -10,18 +10,25 @@ public class MarkerHelper {
     public static final String ATTRIB_INTERFACE = "targetInterfaceName";
 
     public static void createEventMarker(IResource resource, int start, int length, String interfaceName) {
+        System.out.println("      [MarkerHelper] Creating marker:");
+        System.out.println("      - Resource: " + resource.getName());
+        System.out.println("      - Interface: " + interfaceName);
+        System.out.println("      - Position: " + start + " length: " + length);
+        
         try {
-            // Létrehozzuk a markert
             IMarker marker = resource.createMarker(MARKER_TYPE);
+            System.out.println("      [MarkerHelper] Marker created, setting attributes...");
+            
             marker.setAttribute(IMarker.CHAR_START, start);
             marker.setAttribute(IMarker.CHAR_END, start + length);
             marker.setAttribute(IMarker.MESSAGE, "MDM Event: " + interfaceName);
             marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
-            
-            // Eltároljuk az interfész nevét, hogy kattintáskor tudjuk, mit kell keresni
             marker.setAttribute(ATTRIB_INTERFACE, interfaceName);
             
+            System.out.println("      [MarkerHelper] Marker created successfully!");
+            
         } catch (CoreException e) {
+            System.out.println("      [MarkerHelper] ERROR creating marker!");
             e.printStackTrace();
         }
     }

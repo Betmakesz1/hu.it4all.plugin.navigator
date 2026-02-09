@@ -1,19 +1,26 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: MDM Event Navigation Plugin
-Bundle-SymbolicName: com.company.mdm.navigation;singleton:=true
+Bundle-Name: MDM Event Navigator Plugin
+Bundle-SymbolicName: hu.it4all.plugin.navigator;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: com.company.mdm.navigation.Activator
-Bundle-Vendor: COMPANY
+Bundle-Activator: hu.it4all.plugin.navigator.handlers.Activator
+Bundle-Vendor: IT4All
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.core.resources,
+ org.eclipse.jdt.core,
+ org.eclipse.jdt.ui,
  org.eclipse.jface.text,
  org.eclipse.ui.editors,
- org.eclipse.ui.workbench.texteditor,
- org.eclipse.jdt.core,
- org.eclipse.jdt.ui
+ org.eclipse.ui.ide,
+ org.eclipse.ui.workbench.texteditor
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Automatic-Module-Optimization: true
+Automatic-Module-Name: hu.it4all.plugin.navigator
 Bundle-ActivationPolicy: lazy
-Import-Package: org.eclipse.ui
+Export-Package: hu.it4all.plugin.navigator.handlers,
+ hu.it4all.plugin.navigator.handlers.analysis,
+ hu.it4all.plugin.navigator.handlers.builder,
+ hu.it4all.plugin.navigator.handlers.markers,
+ hu.it4all.plugin.navigator.handlers.nature,
+ hu.it4all.plugin.navigator.handlers.search,
+ hu.it4all.plugin.navigator.handlers.ui
