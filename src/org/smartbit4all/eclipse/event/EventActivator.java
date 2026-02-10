@@ -2,6 +2,7 @@ package org.smartbit4all.eclipse.event;
 
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
+import org.smartbit4all.eclipse.event.core.EventLogger;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -24,10 +25,16 @@ public class EventActivator extends AbstractUIPlugin {
     public void start(BundleContext context) throws Exception {
         super.start(context);
         plugin = this;
+        
+        // Initialize the logger
+        EventLogger.info("Event Navigator Plugin Started - Version " + getBundle().getVersion());
     }
 
     @Override
     public void stop(BundleContext context) throws Exception {
+        // Shutdown the logger
+        EventLogger.shutdown();
+        
         plugin = null;
         super.stop(context);
     }
