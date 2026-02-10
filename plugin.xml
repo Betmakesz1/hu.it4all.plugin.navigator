@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.jdt.ui.javaElementFilters">
+      <!-- TODO: Add Java element filters -->
+   </extension>
+
+   <extension
+         point="org.eclipse.jdt.core.compilationParticipant">
+      <!-- TODO: Add compilation participant for validation -->
+   </extension>
+
+   <extension
+         point="org.eclipse.jdt.ui.quickFixProcessors">
+      <!-- TODO: Add quick fix processor -->
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <!-- TODO: Add marker annotation specifications for gutter icons -->
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.views">
+      <!-- TODO: Add Event Graph View -->
+   </extension>
+
+   <extension
+         point="org.eclipse.ltk.core.refactoring.refactoringContributions">
+      <!-- TODO: Add refactoring contributions -->
+   </extension>
+
+   <extension
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+      <!-- TODO: Add code completion support -->
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <!-- TODO: Add preferences page -->
+   </extension>
+
+</plugin>
+
