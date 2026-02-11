@@ -5,6 +5,7 @@ Bundle-SymbolicName: org.smartbit4all.eclipse.event;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.smartbit4all.eclipse.event.EventActivator
 Bundle-Vendor: SmartBit4All
+Bundle-Localization: plugin
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,

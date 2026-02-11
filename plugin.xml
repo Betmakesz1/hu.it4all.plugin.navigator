@@ -42,5 +42,39 @@
       <!-- TODO: Add preferences page -->
    </extension>
 
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            id="org.smartbit4all.eclipse.event.commands.testEventAnnotationScanner"
+            name="%command.testEventAnnotationScanner.name"
+            description="%command.testEventAnnotationScanner.desc">
+      </command>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="org.smartbit4all.eclipse.event.ui.commands.EventAnnotationTestHandler"
+            commandId="org.smartbit4all.eclipse.event.commands.testEventAnnotationScanner">
+         <activeWhen>
+            <iterate ifEmpty="false">
+               <adapt type="org.eclipse.jdt.core.ICompilationUnit"/>
+            </iterate>
+         </activeWhen>
+      </handler>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu">
+         <command
+               commandId="org.smartbit4all.eclipse.event.commands.testEventAnnotationScanner"
+               label="%command.testEventAnnotationScanner.label"
+               style="push">
+         </command>
+      </menuContribution>
+   </extension>
+
 </plugin>
 
