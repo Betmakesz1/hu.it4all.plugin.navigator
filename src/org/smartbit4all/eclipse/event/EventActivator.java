@@ -1,5 +1,6 @@
 package org.smartbit4all.eclipse.event;
 
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.smartbit4all.eclipse.event.core.EventLogger;
@@ -46,5 +47,14 @@ public class EventActivator extends AbstractUIPlugin {
      */
     public static EventActivator getDefault() {
         return plugin;
+    }
+
+    /**
+     * Returns the plugin log
+     *
+     * @return the plugin log
+     */
+    public static ILog getPluginLog() {
+        return getDefault().getLog();
     }
 }

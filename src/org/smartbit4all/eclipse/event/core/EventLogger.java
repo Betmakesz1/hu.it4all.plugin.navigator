@@ -63,9 +63,16 @@ public class EventLogger {
             String initMsg = "\n========================================\n" +
                            "Event Navigator Plugin Logger Initialized\n" +
                            "Timestamp: " + DATE_FORMAT.format(new Date()) + "\n" +
+                           "Log file: " + logFile.getAbsolutePath() + "\n" +
                            "========================================\n";
             fileWriter.write(initMsg);
             fileWriter.flush();
+            
+            // Print log file location to console for easy discovery
+            System.out.println("========================================");
+            System.out.println("[Event Navigator Plugin]");
+            System.out.println("Log file location: " + logFile.getAbsolutePath());
+            System.out.println("========================================");
             
         } catch (IOException e) {
             // Fallback to stderr if initialization fails
@@ -192,7 +199,9 @@ public class EventLogger {
             }
             
             Status status = new Status(severity, PLUGIN_ID, message, exception);
-            EventActivator.getDefault().getLog().log(status);
+            if (EventActivator.getDefault() != null) {
+                EventActivator.getPluginLog().log(status);
+            }
         } catch (Exception e) {
             // Silently ignore
         }
