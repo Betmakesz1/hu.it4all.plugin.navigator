@@ -53,6 +53,8 @@ public class EventPublisherScanner {
 
             CompilationUnit cu = (CompilationUnit) parser.createAST(null);
             cu.accept(new EventPublisherVisitor(result));
+            
+            EventLogger.info("scanForPublishers: Found " + result.size() + " publisher(s)");
         } catch (Exception e) {
             EventLogger.error("scanForPublishers: Exception during AST scan", e);
         }
@@ -173,6 +175,9 @@ public class EventPublisherScanner {
         // EventPublisherInfo objektum összeállítása
         String className = resolveDeclaringClassName(enclosingMethod, methodBinding);
         String methodName = enclosingMethod.getName().getIdentifier();
+
+        EventLogger.debug("extractPublisherInfo: Publisher found - API: " + publisherApi + 
+                ", Event: " + eventName + ", Method: " + className + "." + methodName);
 
         return new EventPublisherInfo(publisherApi, eventName, className, methodName, method, node);
     }

@@ -49,6 +49,11 @@
             name="%command.testEventAnnotationScanner.name"
             description="%command.testEventAnnotationScanner.desc">
       </command>
+      <command
+            id="org.smartbit4all.eclipse.event.commands.testEventPublisherScanner"
+            name="%command.testEventPublisherScanner.name"
+            description="%command.testEventPublisherScanner.desc">
+      </command>
    </extension>
 
    <extension
@@ -62,17 +67,35 @@
             </iterate>
          </activeWhen>
       </handler>
+      <handler
+            class="org.smartbit4all.eclipse.event.ui.commands.EventPublisherTestHandler"
+            commandId="org.smartbit4all.eclipse.event.commands.testEventPublisherScanner">
+         <activeWhen>
+            <iterate ifEmpty="false">
+               <adapt type="org.eclipse.jdt.core.ICompilationUnit"/>
+            </iterate>
+         </activeWhen>
+      </handler>
    </extension>
 
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
             locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu">
-         <command
-               commandId="org.smartbit4all.eclipse.event.commands.testEventAnnotationScanner"
-               label="%command.testEventAnnotationScanner.label"
-               style="push">
-         </command>
+         <menu
+               id="org.smartbit4all.eclipse.event.menus.testMenu"
+               label="%menu.eventNavigationTests.label">
+            <command
+                  commandId="org.smartbit4all.eclipse.event.commands.testEventAnnotationScanner"
+                  label="%command.testEventAnnotationScanner.label"
+                  style="push">
+            </command>
+            <command
+                  commandId="org.smartbit4all.eclipse.event.commands.testEventPublisherScanner"
+                  label="%command.testEventPublisherScanner.label"
+                  style="push">
+            </command>
+         </menu>
       </menuContribution>
    </extension>
 
