@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Status;
 import org.smartbit4all.eclipse.event.EventActivator;
 

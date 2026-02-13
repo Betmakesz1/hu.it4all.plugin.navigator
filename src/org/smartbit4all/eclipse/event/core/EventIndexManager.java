@@ -85,8 +85,9 @@ public class EventIndexManager {
             for (Object result : subscriberResults) {
                 if (result instanceof EventSubscriberInfo) {
                     EventSubscriberInfo subscriberInfo = (EventSubscriberInfo) result;
-                    IMethod method = subscriberInfo.getMethod();
-                    if (method != null) {
+                    Object methodObj = subscriberInfo.getMethod();
+                    if (methodObj instanceof IMethod) {
+                        IMethod method = (IMethod) methodObj;
                         this.subscribers.put(method, subscriberInfo);
                         EventLogger.debug("indexCompilationUnit: Indexed subscriber in " + method.getElementName());
                     }
@@ -100,8 +101,9 @@ public class EventIndexManager {
             for (Object result : publisherResults) {
                 if (result instanceof EventPublisherInfo) {
                     EventPublisherInfo publisherInfo = (EventPublisherInfo) result;
-                    IMethod method = publisherInfo.getMethod();
-                    if (method != null) {
+                    Object methodObj = publisherInfo.getMethod();
+                    if (methodObj instanceof IMethod) {
+                        IMethod method = (IMethod) methodObj;
                         this.publishers.put(method, publisherInfo);
                         EventLogger.debug("indexCompilationUnit: Indexed publisher in " + method.getElementName());
                     }
