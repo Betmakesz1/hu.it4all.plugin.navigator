@@ -29,6 +29,9 @@ public class EventLogger {
     private static FileWriter fileWriter;
     private static final Object LOCK = new Object();
     
+    // Logging enabled flag (can be configured via plugin.properties)
+    private static boolean loggingEnabled = true;
+    
     // Log levels
     private static final int DEBUG = 1;
     private static final int INFO = 2;
@@ -36,6 +39,10 @@ public class EventLogger {
     private static final int ERROR = 4;
     
     static {
+        // Read logging enabled flag from plugin.properties
+        String enableLoggingKey = "event.logging.enabled";
+        loggingEnabled = EventPluginProperties.getBoolean(enableLoggingKey);
+        
         initializeLogger();
     }
     
@@ -120,6 +127,11 @@ public class EventLogger {
      * Core logging method
      */
     private static void log(int level, String message, Throwable exception) {
+        // Check if logging is enabled
+        if (!loggingEnabled) {
+            return;
+        }
+        
         synchronized (LOCK) {
             try {
                 if (fileWriter == null) {
@@ -233,5 +245,13 @@ public class EventLogger {
                 e.printStackTrace();
             }
         }
+    }
+    
+    /**
+     * Check if logging is enabled globally
+     * @return true if logging is enabled, false otherwise
+     */
+    public static boolean isLoggingEnabled() {
+        return loggingEnabled;
     }
 }

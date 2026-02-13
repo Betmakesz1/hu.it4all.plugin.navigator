@@ -33,6 +33,19 @@ public final class EventPluginProperties {
         }
         return null;
     }
+    
+    /**
+     * Get a boolean value from plugin.properties
+     * @param key property key
+     * @return true if value is "true", false otherwise
+     */
+    public static boolean getBoolean(String key) {
+        String value = get(key);
+        if (value == null) {
+            return false;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
 
     private static ResourceBundle loadBundle() {
         try {
