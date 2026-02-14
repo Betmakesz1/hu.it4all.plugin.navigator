@@ -3,6 +3,7 @@ package org.smartbit4all.eclipse.event;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
+import org.smartbit4all.eclipse.event.core.EventIndexManager;
 import org.smartbit4all.eclipse.event.core.EventLogger;
 
 /**
@@ -29,10 +30,22 @@ public class EventActivator extends AbstractUIPlugin {
         
         // Initialize the logger
         EventLogger.info("Event Navigator Plugin Started - Version " + getBundle().getVersion());
+        
+        // Initialize the EventIndexManager singleton
+        EventIndexManager.getInstance();
+        EventLogger.info("EventIndexManager initialized");
     }
 
     @Override
     public void stop(BundleContext context) throws Exception {
+        // Clear the event index
+        try {
+            EventIndexManager.getInstance().clear();
+            EventLogger.info("EventIndexManager cleared");
+        } catch (Exception e) {
+            EventLogger.error("Error clearing EventIndexManager", e);
+        }
+        
         // Shutdown the logger
         EventLogger.shutdown();
         

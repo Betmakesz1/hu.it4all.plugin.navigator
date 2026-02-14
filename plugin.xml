@@ -23,6 +23,19 @@
    </extension>
 
    <extension
+         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors"
+         id="org.smartbit4all.eclipse.event.hyperlinkDetector"
+         name="Event Hyperlink Detector">
+      <hyperlinkDetector
+            activate="true"
+            class="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            description="Provides hyperlink navigation between event publishers and subscribers"
+            id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            targetId="org.eclipse.jdt.ui.javaCode">
+      </hyperlinkDetector>
+   </extension>
+
+   <extension
          point="org.eclipse.ui.views">
       <!-- TODO: Add Event Graph View -->
    </extension>
