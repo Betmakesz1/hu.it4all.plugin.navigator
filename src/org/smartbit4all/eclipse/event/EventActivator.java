@@ -59,13 +59,8 @@ public class EventActivator extends AbstractUIPlugin {
             EventLogger.error("Error registering EventResourceChangeListener", e);
         }
         
-        // Register IHyperlinkDetector service for Ctrl+Click navigation
-        try {
-            registerHyperlinkDetector(context);
-            EventLogger.info("EventHyperlinkDetector registered as OSGi service");
-        } catch (Exception e) {
-            EventLogger.error("Error registering EventHyperlinkDetector service", e);
-        }
+        // EventHyperlinkDetector is registered via extension point in plugin.xml
+        EventLogger.info("EventHyperlinkDetector registered via extension point");
         
         // Perform initial workspace indexing in background
         initializeWorkspaceIndex();
@@ -136,13 +131,11 @@ public class EventActivator extends AbstractUIPlugin {
     }
 
     /**
-     * Registers the EventHyperlinkDetector as an OSGi service.
-     * This bypasses the need for extension point declaration, which can be
-     * problematic in some Eclipse versions (e.g., Eclipse 4.38).
-     * 
-     * @param context the BundleContext for service registration
+     * NOTE: EventHyperlinkDetector is now registered via extension point in plugin.xml
+     * instead of OSGi service registration to ensure proper priority handling.
      */
-    private void registerHyperlinkDetector(BundleContext context) {
+    @SuppressWarnings("unused")
+    private void registerHyperlinkDetector_DEPRECATED(BundleContext context) {
         try {
             EventHyperlinkDetector detector = new EventHyperlinkDetector();
             context.registerService(IHyperlinkDetector.class.getName(), detector, null);

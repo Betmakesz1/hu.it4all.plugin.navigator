@@ -110,7 +110,7 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
             }
             if (isPublisherInvocation(currentNode)) {
                 EventLogger.debug("EventHyperlinkDetector: Publisher invocation detected");
-                return createPublisherToSubscribersHyperlinks(currentNode, region);
+                return createPublisherToImplementationHyperlinks(currentNode, region);
             }
             // Move up to parent node
             currentNode = currentNode.getParent();
@@ -220,13 +220,13 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
     }
     
     /**
-     * Creates hyperlinks from a publisher invocation to its subscribers.
+     * Creates hyperlinks from a publisher invocation to its publisher implementation.
      * 
      * @param node the MethodInvocation node (publisher call)
      * @param region the text region for the hyperlink
-     * @return array of hyperlinks or null if no subscribers found
+     * @return array of hyperlinks or null if no publisher found
      */
-    private IHyperlink[] createPublisherToSubscribersHyperlinks(ASTNode node, IRegion region) {
+    private IHyperlink[] createPublisherToImplementationHyperlinks(ASTNode node, IRegion region) {
         if (!(node instanceof MethodInvocation)) {
             return null;
         }
@@ -242,35 +242,28 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
         
         EventLogger.debug("EventHyperlinkDetector: Publisher event extracted: " + eventDef.toString());
         
-        // Find subscribers for this event
+        // Find the publisher implementation for this event
         EventIndexManager indexManager = EventIndexManager.getInstance();
-        List<EventSubscriberInfo> subscribers = indexManager.findSubscribers(eventDef);
+        EventPublisherInfo publisher = indexManager.findPublisher(eventDef);
         
-        if (subscribers == null || subscribers.isEmpty()) {
-            // No subscribers found
-            EventLogger.debug("EventHyperlinkDetector: No subscribers found for event: " + eventDef.toString());
+        if (publisher == null) {
+            // No publisher found
+            EventLogger.debug("EventHyperlinkDetector: No publisher found for event: " + eventDef.toString());
             return null;
         }
         
-        EventLogger.debug("EventHyperlinkDetector: Found " + subscribers.size() + " subscriber(s) for event: " + eventDef.toString());
+        EventLogger.debug("EventHyperlinkDetector: Found publisher for event: " + eventDef.toString());
         
-        if (subscribers.size() == 1) {
-            // Single subscriber: create direct hyperlink
-            EventSubscriberInfo subscriber = subscribers.get(0);
-            Object methodObj = subscriber.getMethod();
-            if (methodObj instanceof IMethod) {
-                IMethod method = (IMethod) methodObj;
-                return new IHyperlink[] {
-                    new JavaElementHyperlink(method, region)
-                };
-            }
-            return null;
-        } else {
-            // Multiple subscribers: create list hyperlink
+        // Publisher found: create hyperlink to the publisher implementation
+        Object methodObj = publisher.getMethod();
+        if (methodObj instanceof IMethod) {
+            IMethod method = (IMethod) methodObj;
             return new IHyperlink[] {
-                new EventSubscriberListHyperlink(eventDef, subscribers, region)
+                new JavaElementHyperlink(method, region)
             };
         }
+        
+        return null;
     }
     
     /**

@@ -22,7 +22,29 @@
       <!-- TODO: Add marker annotation specifications for gutter icons -->
    </extension>
 
-   <!-- EventHyperlinkDetector is registered via OSGi Service Registry in EventActivator -->
+   <extension
+         point="org.eclipse.jdt.ui.javaEditorTextHovers">
+      <hover
+            id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            class="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            label="Event Navigation Hover"
+            priority="100"
+            activate="true">
+      </hover>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
+      <hyperlinkDetector
+            id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            name="Event Navigation Hyperlink Detector"
+            description="Enables Ctrl+Click navigation between event publishers and subscribers"
+            class="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
+            targetId="org.eclipse.jdt.ui.javaCode"
+            priority="500"
+            activate="true">
+      </hyperlinkDetector>
+   </extension>
 
    <extension
          point="org.eclipse.ui.views">
