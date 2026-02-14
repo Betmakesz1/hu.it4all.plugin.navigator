@@ -7,6 +7,7 @@ import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.hyperlink.IHyperlink;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
@@ -130,7 +131,7 @@ public class EventSubscriberListHyperlink implements IHyperlink {
     /**
      * Label provider for subscriber list items in the selection dialog.
      */
-    private static class SubscriberLabelProvider extends org.eclipse.jface.viewers.LabelProvider {
+    private static class SubscriberLabelProvider extends LabelProvider {
         @Override
         public String getText(Object element) {
             if (element instanceof EventSubscriberInfo) {

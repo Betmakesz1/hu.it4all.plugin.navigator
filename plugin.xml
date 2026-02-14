@@ -22,18 +22,7 @@
       <!-- TODO: Add marker annotation specifications for gutter icons -->
    </extension>
 
-   <extension
-         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors"
-         id="org.smartbit4all.eclipse.event.hyperlinkDetector"
-         name="Event Hyperlink Detector">
-      <hyperlinkDetector
-            activate="true"
-            class="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
-            description="Provides hyperlink navigation between event publishers and subscribers"
-            id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
-            targetId="org.eclipse.jdt.ui.javaCode">
-      </hyperlinkDetector>
-   </extension>
+   <!-- EventHyperlinkDetector is registered via OSGi Service Registry in EventActivator -->
 
    <extension
          point="org.eclipse.ui.views">
@@ -67,6 +56,11 @@
             name="%command.testEventPublisherScanner.name"
             description="%command.testEventPublisherScanner.desc">
       </command>
+      <command
+            id="org.smartbit4all.eclipse.event.commands.indexWorkspace"
+            name="%command.indexWorkspace.name"
+            description="%command.indexWorkspace.desc">
+      </command>
    </extension>
 
    <extension
@@ -89,12 +83,25 @@
             </iterate>
          </activeWhen>
       </handler>
+      <handler
+            class="org.smartbit4all.eclipse.event.ui.commands.IndexWorkspaceHandler"
+            commandId="org.smartbit4all.eclipse.event.commands.indexWorkspace">
+      </handler>
    </extension>
 
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
             locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu">
+         <separator
+               name="org.smartbit4all.eclipse.event.separator"
+               visible="true">
+         </separator>
+         <command
+               commandId="org.smartbit4all.eclipse.event.commands.indexWorkspace"
+               label="%command.indexWorkspace.label"
+               style="push">
+         </command>
          <menu
                id="org.smartbit4all.eclipse.event.menus.testMenu"
                label="%menu.eventNavigationTests.label">

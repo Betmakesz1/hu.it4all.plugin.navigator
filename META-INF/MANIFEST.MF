@@ -8,6 +8,7 @@ Bundle-Vendor: SmartBit4All
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
+ org.eclipse.core.commands,
  org.eclipse.jdt.core,
  org.eclipse.jdt.ui,
  org.eclipse.core.resources,
