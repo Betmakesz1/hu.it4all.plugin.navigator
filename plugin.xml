@@ -23,17 +23,6 @@
    </extension>
 
    <extension
-         point="org.eclipse.jdt.ui.javaEditorTextHovers">
-      <hover
-            id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
-            class="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"
-            label="Event Navigation Hover"
-            priority="100"
-            activate="true">
-      </hover>
-   </extension>
-
-   <extension
          point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
       <hyperlinkDetector
             id="org.smartbit4all.eclipse.event.navigation.EventHyperlinkDetector"

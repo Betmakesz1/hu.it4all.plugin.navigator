@@ -56,7 +56,9 @@ public class EventPublisherScanner {
             
             EventLogger.info("scanForPublishers: Found " + result.size() + " publisher(s)");
         } catch (Exception e) {
-            EventLogger.error("scanForPublishers: Exception during AST scan", e);
+            String projectName = unit.getJavaProject() != null ? unit.getJavaProject().getElementName() : "unknown";
+            EventLogger.error("scanForPublishers: Exception during AST scan for " + unit.getElementName() 
+                + " in project " + projectName, e);
         }
 
         return result;
@@ -200,7 +202,20 @@ public class EventPublisherScanner {
         TypeLiteral typeLit = (TypeLiteral) expr;
         ITypeBinding binding = typeLit.resolveTypeBinding();
         if (binding != null) {
-            return binding.getQualifiedName();
+            String qualifiedName = binding.getQualifiedName();
+            EventLogger.debug("extractTypeFromTypeLiteral: Resolved FQN (raw): " + qualifiedName);
+            
+            // Handle java.lang.Class<T> wrapper from .class literals
+            if (qualifiedName != null && qualifiedName.startsWith("java.lang.Class<")) {
+                ITypeBinding[] typeArgs = binding.getTypeArguments();
+                if (typeArgs != null && typeArgs.length > 0) {
+                    String actualType = typeArgs[0].getQualifiedName();
+                    EventLogger.debug("extractTypeFromTypeLiteral: Extracted actual type from Class<T>: " + actualType);
+                    return actualType;
+                }
+            }
+            
+            return qualifiedName;
         }
 
         return null;

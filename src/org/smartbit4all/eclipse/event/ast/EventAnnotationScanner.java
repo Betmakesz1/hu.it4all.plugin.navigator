@@ -63,7 +63,9 @@ public class EventAnnotationScanner {
             CompilationUnit cu = (CompilationUnit) parser.createAST(null);
             cu.accept(new EventSubscriptionVisitor(result));
         } catch (Exception e) {
-            EventLogger.error("scanForSubscribers: Exception during AST scan", e);
+            String projectName = unit.getJavaProject() != null ? unit.getJavaProject().getElementName() : "unknown";
+            EventLogger.error("scanForSubscribers: Exception during AST scan for " + unit.getElementName() 
+                + " in project " + projectName, e);
         }
         return result;
     }

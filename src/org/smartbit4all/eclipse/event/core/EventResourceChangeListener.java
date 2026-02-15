@@ -45,7 +45,8 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
                 
                 // Get compilation unit from file
                 ICompilationUnit compilationUnit = JavaCore.createCompilationUnitFrom(file);
-                if (compilationUnit == null || !compilationUnit.exists()) {
+                boolean isRemoved = delta.getKind() == IResourceDelta.REMOVED;
+                if (compilationUnit == null || (!isRemoved && !compilationUnit.exists())) {
                     return true;
                 }
                 
@@ -113,10 +114,11 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
      */
     private void handleFileRemoved(ICompilationUnit compilationUnit) {
         EventLogger.info("EventResourceChangeListener: File removed - removing from index: " + compilationUnit.getElementName());
-        
-        // TODO: Implement index cleanup when file is deleted
-        // This would require removing all publishers/subscribers from this file
-        EventLogger.warn("EventResourceChangeListener: Cleanup for deleted files not yet implemented");
+
+        EventIndexManager indexManager = EventIndexManager.getInstance();
+        indexManager.removeCompilationUnit(compilationUnit);
+
+        EventLogger.debug("EventResourceChangeListener: Removed entries for deleted file");
     }
 
     /**

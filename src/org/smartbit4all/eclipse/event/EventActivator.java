@@ -3,6 +3,10 @@ package org.smartbit4all.eclipse.event;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.text.hyperlink.IHyperlinkDetector;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
@@ -102,11 +106,26 @@ public class EventActivator extends AbstractUIPlugin {
     private void initializeWorkspaceIndex() {
         try {
             EventLogger.info("EventActivator: Starting workspace index initialization");
-            
-            // TODO: Implement workspace-wide indexing in background job
-            // For now, index is built on-demand as files are edited
-            
-            EventLogger.info("EventActivator: Workspace index initialization complete");
+
+            Job indexJob = new Job("Event Navigator - Initial Workspace Index") {
+                @Override
+                protected IStatus run(IProgressMonitor monitor) {
+                    try {
+                        monitor.beginTask("Indexing workspace", IProgressMonitor.UNKNOWN);
+                        EventIndexManager.getInstance().indexWorkspace();
+                        EventLogger.info("EventActivator: Workspace index initialization complete");
+                        return Status.OK_STATUS;
+                    } catch (Exception e) {
+                        EventLogger.error("EventActivator: Error during workspace index initialization", e);
+                        return Status.CANCEL_STATUS;
+                    } finally {
+                        monitor.done();
+                    }
+                }
+            };
+
+            indexJob.setUser(false);
+            indexJob.schedule();
         } catch (Exception e) {
             EventLogger.error("EventActivator: Error during workspace index initialization", e);
         }
