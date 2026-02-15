@@ -19,7 +19,62 @@
 
    <extension
          point="org.eclipse.ui.editors.markerAnnotationSpecification">
-      <!-- TODO: Add marker annotation specifications for gutter icons -->
+      <!-- Event Publisher Marker Annotation -->
+      <markerAnnotationSpecification
+            annotationType="org.smartbit4all.eclipse.event.publisherMarker"
+            label="%annotation.eventPublisher.label"
+            icon="icons/event_publisher.png"
+            iconSet="icons/event_publisher.png"
+            quickFixIcon="icons/event_publisher_32.png"
+            verticalRulerPreferenceLabel="Event Publisher in Vertical Ruler"
+            highlightPreferenceLabel="Highlight Event Publisher"
+            highlightPreferenceColor="100,150,200"
+            contributesToHeader="true"
+            showInNextPrevDropdown="false"
+            textPreferenceKey="eventPublisherAnnotationIndication"
+            overviewRulerPreferenceKey="eventPublisherAnnotationIndicationInOverviewRuler"
+            textStylePreferenceKey="eventPublisherAnnotationIndicationStyle"
+            verticalRulerPreferenceKey="eventPublisherAnnotationIndicationInVerticalRuler"
+            presentationLayer="2">
+      </markerAnnotationSpecification>
+
+      <!-- Event Subscriber Marker Annotation -->
+      <markerAnnotationSpecification
+            annotationType="org.smartbit4all.eclipse.event.subscriberMarker"
+            label="%annotation.eventSubscriber.label"
+            icon="icons/event_subscriber.png"
+            iconSet="icons/event_subscriber.png"
+            quickFixIcon="icons/event_subscriber_32.png"
+            verticalRulerPreferenceLabel="Event Subscriber in Vertical Ruler"
+            highlightPreferenceLabel="Highlight Event Subscriber"
+            highlightPreferenceColor="150,200,100"
+            contributesToHeader="true"
+            showInNextPrevDropdown="false"
+            textPreferenceKey="eventSubscriberAnnotationIndication"
+            overviewRulerPreferenceKey="eventSubscriberAnnotationIndicationInOverviewRuler"
+            textStylePreferenceKey="eventSubscriberAnnotationIndicationStyle"
+            verticalRulerPreferenceKey="eventSubscriberAnnotationIndicationInVerticalRuler"
+            presentationLayer="2">
+      </markerAnnotationSpecification>
+
+      <!-- Event Warning Marker Annotation -->
+      <markerAnnotationSpecification
+            annotationType="org.smartbit4all.eclipse.event.warningMarker"
+            label="%annotation.eventWarning.label"
+            icon="icons/event_warning.png"
+            iconSet="icons/event_warning.png"
+            quickFixIcon="icons/event_warning.png"
+            verticalRulerPreferenceLabel="Event Warning in Vertical Ruler"
+            highlightPreferenceLabel="Highlight Event Warning"
+            highlightPreferenceColor="255,200,100"
+            contributesToHeader="true"
+            showInNextPrevDropdown="true"
+            textPreferenceKey="eventWarningAnnotationIndication"
+            overviewRulerPreferenceKey="eventWarningAnnotationIndicationInOverviewRuler"
+            textStylePreferenceKey="eventWarningAnnotationIndicationStyle"
+            verticalRulerPreferenceKey="eventWarningAnnotationIndicationInVerticalRuler"
+            presentationLayer="3">
+      </markerAnnotationSpecification>
    </extension>
 
    <extension
