@@ -9,8 +9,9 @@ public class EventPublisherInfo {
     private String event;
     private String className;
     private String methodName;
-    private Object method;
-    private Object invocationNode;
+    private String methodHandle; // IMethod.getHandleIdentifier() for persistence
+    private transient Object method;
+    private transient Object invocationNode;
 
     public EventPublisherInfo(String api, String event, String className, 
                              String methodName, Object method, Object invocationNode) {
@@ -20,6 +21,11 @@ public class EventPublisherInfo {
         this.methodName = methodName;
         this.method = method;
         this.invocationNode = invocationNode;
+        
+        // Store method handle for persistence
+        if (method instanceof org.eclipse.jdt.core.IMethod) {
+            this.methodHandle = ((org.eclipse.jdt.core.IMethod) method).getHandleIdentifier();
+        }
     }
 
     public String getApi() {
@@ -44,6 +50,14 @@ public class EventPublisherInfo {
 
     public Object getInvocationNode() {
         return invocationNode;
+    }
+
+    public String getMethodHandle() {
+        return methodHandle;
+    }
+
+    public void setMethodHandle(String methodHandle) {
+        this.methodHandle = methodHandle;
     }
 
     public EventDefinition getEventDefinition() {

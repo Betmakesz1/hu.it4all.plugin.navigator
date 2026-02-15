@@ -56,9 +56,9 @@ public class EventActivator extends AbstractUIPlugin {
             resourceChangeListener = new EventResourceChangeListener();
             ResourcesPlugin.getWorkspace().addResourceChangeListener(
                 resourceChangeListener,
-                IResourceChangeEvent.POST_CHANGE
+                IResourceChangeEvent.POST_CHANGE | IResourceChangeEvent.POST_BUILD
             );
-            EventLogger.info("EventResourceChangeListener registered");
+            EventLogger.info("EventResourceChangeListener registered (POST_CHANGE | POST_BUILD)");
         } catch (Exception e) {
             EventLogger.error("Error registering EventResourceChangeListener", e);
         }
@@ -72,6 +72,14 @@ public class EventActivator extends AbstractUIPlugin {
 
     @Override
     public void stop(BundleContext context) throws Exception {
+        // Save index before shutdown
+        try {
+            EventIndexManager.getInstance().saveIndex();
+            EventLogger.info("EventActivator: Index saved on plugin shutdown");
+        } catch (Exception e) {
+            EventLogger.error("EventActivator: Error saving index on shutdown", e);
+        }
+        
         // Unregister resource change listener
         try {
             if (resourceChangeListener != null) {
@@ -82,7 +90,7 @@ public class EventActivator extends AbstractUIPlugin {
             EventLogger.error("Error unregistering EventResourceChangeListener", e);
         }
         
-        // Clear the event index
+        // Clear the event index from memory (but keep cache file)
         try {
             EventIndexManager.getInstance().clear();
             EventLogger.info("EventIndexManager cleared");
@@ -100,20 +108,40 @@ public class EventActivator extends AbstractUIPlugin {
     /**
      * Initializes the event index for the current workspace.
      * 
-     * This method is called at plugin startup to build the initial event index.
-     * In a background job to avoid blocking the UI.
+     * First attempts to load from cache. If no cache exists or cache is invalid,
+     * performs a full workspace indexing in the background.
      */
     private void initializeWorkspaceIndex() {
         try {
             EventLogger.info("EventActivator: Starting workspace index initialization");
 
-            Job indexJob = new Job("Event Navigator - Initial Workspace Index") {
+            Job indexJob = new Job("Event Navigator - Initialize Index") {
                 @Override
                 protected IStatus run(IProgressMonitor monitor) {
                     try {
+                        EventIndexManager indexManager = EventIndexManager.getInstance();
+                        
+                        // Try to load from cache first
+                        if (indexManager.hasCachedIndex()) {
+                            EventLogger.info("EventActivator: Cache found, loading from cache");
+                            monitor.beginTask("Loading event index from cache", IProgressMonitor.UNKNOWN);
+                            
+                            boolean loaded = indexManager.loadIndex();
+                            if (loaded) {
+                                EventLogger.info("EventActivator: Index loaded successfully from cache");
+                                return Status.OK_STATUS;
+                            } else {
+                                EventLogger.warn("EventActivator: Cache load failed, rebuilding index");
+                            }
+                        } else {
+                            EventLogger.info("EventActivator: No cache found, building index from scratch");
+                        }
+                        
+                        // Cache doesn't exist or load failed - do full indexing
                         monitor.beginTask("Indexing workspace", IProgressMonitor.UNKNOWN);
-                        EventIndexManager.getInstance().indexWorkspace();
+                        indexManager.indexWorkspace();
                         EventLogger.info("EventActivator: Workspace index initialization complete");
+                        
                         return Status.OK_STATUS;
                     } catch (Exception e) {
                         EventLogger.error("EventActivator: Error during workspace index initialization", e);
@@ -124,7 +152,7 @@ public class EventActivator extends AbstractUIPlugin {
                 }
             };
 
-            indexJob.setUser(false);
+            indexJob.setUser(false); // Run silently in background
             indexJob.schedule();
         } catch (Exception e) {
             EventLogger.error("EventActivator: Error during workspace index initialization", e);

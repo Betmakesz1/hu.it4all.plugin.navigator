@@ -52,7 +52,11 @@
 
    <extension
          point="org.eclipse.ui.preferencePages">
-      <!-- TODO: Add preferences page -->
+      <page
+            id="org.smartbit4all.eclipse.event.preferences.EventPluginPreferencePage"
+            name="Event Navigator"
+            class="org.smartbit4all.eclipse.event.preferences.EventPluginPreferencePage">
+      </page>
    </extension>
 
    <extension

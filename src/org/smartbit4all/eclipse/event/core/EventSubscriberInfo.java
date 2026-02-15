@@ -10,7 +10,8 @@ public class EventSubscriberInfo {
     private String channel;
     private String className;
     private String methodName;
-    private Object method;
+    private String methodHandle; // IMethod.getHandleIdentifier() for persistence
+    private transient Object method;
 
     public EventSubscriberInfo(String api, String event, String channel, 
                               String className, String methodName, Object method) {
@@ -20,6 +21,11 @@ public class EventSubscriberInfo {
         this.className = className;
         this.methodName = methodName;
         this.method = method;
+        
+        // Store method handle for persistence
+        if (method instanceof org.eclipse.jdt.core.IMethod) {
+            this.methodHandle = ((org.eclipse.jdt.core.IMethod) method).getHandleIdentifier();
+        }
     }
 
     public String getApi() {
@@ -44,6 +50,14 @@ public class EventSubscriberInfo {
 
     public Object getMethod() {
         return method;
+    }
+
+    public String getMethodHandle() {
+        return methodHandle;
+    }
+
+    public void setMethodHandle(String methodHandle) {
+        this.methodHandle = methodHandle;
     }
 
     public EventDefinition getEventDefinition() {

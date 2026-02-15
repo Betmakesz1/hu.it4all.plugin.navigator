@@ -25,11 +25,17 @@ public class EventIndexManager {
 
     private static EventIndexManager instance;
 
-    // Index data structures
+    // Index data structures (handle-based for JSON serialization)
     private Map<String, EventDefinition> eventsByKey;
-    private Map<IMethod, EventPublisherInfo> publishers;
-    private Map<IMethod, EventSubscriberInfo> subscribers;
+    private Map<String, EventPublisherInfo> publishers; // Key = IMethod.getHandleIdentifier()
+    private Map<String, EventSubscriberInfo> subscribers; // Key = IMethod.getHandleIdentifier()
     private List<IEventIndexChangeListener> listeners;
+    
+    // Persistence handler
+    private EventIndexPersistence persistence;
+    
+    // Batch mode flag - when true, suppress auto-save after each file
+    private boolean batchMode = false;
 
     private EventIndexManager() {
         // Initialize data structures
@@ -37,6 +43,7 @@ public class EventIndexManager {
         this.publishers = new HashMap<>();
         this.subscribers = new HashMap<>();
         this.listeners = new ArrayList<>();
+        this.persistence = new EventIndexPersistence();
     }
 
     public static synchronized EventIndexManager getInstance() {
@@ -55,18 +62,30 @@ public class EventIndexManager {
         EventLogger.info("indexWorkspace: Starting workspace-wide indexing");
         clear();
 
-        IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-        for (IProject project : projects) {
-            if (!project.isOpen()) {
-                continue;
-            }
-            try {
-                if (!project.hasNature(JavaCore.NATURE_ID)) {
+        // Enable batch mode to avoid saving after each project
+        boolean wasBatchMode = batchMode;
+        batchMode = true;
+        
+        try {
+            IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+            for (IProject project : projects) {
+                if (!project.isOpen()) {
                     continue;
                 }
-                indexProject(JavaCore.create(project));
-            } catch (Exception e) {
-                EventLogger.error("indexWorkspace: Error indexing project " + project.getName(), e);
+                try {
+                    if (!project.hasNature(JavaCore.NATURE_ID)) {
+                        continue;
+                    }
+                    indexProject(JavaCore.create(project));
+                } catch (Exception e) {
+                    EventLogger.error("indexWorkspace: Error indexing project " + project.getName(), e);
+                }
+            }
+        } finally {
+            // Restore batch mode and notify once at the end
+            batchMode = wasBatchMode;
+            if (!batchMode) {
+                notifyListeners();
             }
         }
     }
@@ -82,6 +101,11 @@ public class EventIndexManager {
         }
 
         IJavaProject javaProject = (IJavaProject) project;
+        
+        // Enable batch mode to avoid saving after each file
+        boolean wasBatchMode = batchMode;
+        batchMode = true;
+        
         try {
             IPackageFragment[] packages = javaProject.getPackageFragments();
             for (IPackageFragment pkg : packages) {
@@ -96,6 +120,12 @@ public class EventIndexManager {
             }
         } catch (Exception e) {
             EventLogger.error("indexProject: Error indexing project " + javaProject.getElementName(), e);
+        } finally {
+            // Restore batch mode and notify once at the end
+            batchMode = wasBatchMode;
+            if (!batchMode) {
+                notifyListeners();
+            }
         }
     }
 
@@ -141,8 +171,9 @@ public class EventIndexManager {
                     Object methodObj = subscriberInfo.getMethod();
                     if (methodObj instanceof IMethod) {
                         IMethod method = (IMethod) methodObj;
-                        this.subscribers.put(method, subscriberInfo);
-                        EventLogger.debug("indexCompilationUnit: Indexed subscriber in " + method.getElementName());
+                        String handleId = method.getHandleIdentifier();
+                        this.subscribers.put(handleId, subscriberInfo);
+                        EventLogger.debug("indexCompilationUnit: Indexed subscriber in " + method.getElementName() + " (handle: " + handleId + ")");
                     }
                 }
             }
@@ -157,8 +188,9 @@ public class EventIndexManager {
                     Object methodObj = publisherInfo.getMethod();
                     if (methodObj instanceof IMethod) {
                         IMethod method = (IMethod) methodObj;
-                        this.publishers.put(method, publisherInfo);
-                        EventLogger.debug("indexCompilationUnit: Indexed publisher in " + method.getElementName());
+                        String handleId = method.getHandleIdentifier();
+                        this.publishers.put(handleId, publisherInfo);
+                        EventLogger.debug("indexCompilationUnit: Indexed publisher in " + method.getElementName() + " (handle: " + handleId + ")");
                     }
                 }
             }
@@ -281,13 +313,20 @@ public class EventIndexManager {
         removeEntriesByUnit(this.publishers, compilationUnit);
     }
 
-    private <T> void removeEntriesByUnit(Map<IMethod, T> map, ICompilationUnit compilationUnit) {
-        Iterator<Map.Entry<IMethod, T>> iterator = map.entrySet().iterator();
+    private <T> void removeEntriesByUnit(Map<String, T> map, ICompilationUnit compilationUnit) {
+        Iterator<Map.Entry<String, T>> iterator = map.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<IMethod, T> entry = iterator.next();
-            IMethod method = entry.getKey();
-            if (method != null && compilationUnit.equals(method.getCompilationUnit())) {
-                iterator.remove();
+            Map.Entry<String, T> entry = iterator.next();
+            String handleId = entry.getKey();
+            try {
+                IMethod method = (IMethod) JavaCore.create(handleId);
+                if (method != null && compilationUnit.equals(method.getCompilationUnit())) {
+                    iterator.remove();
+                    EventLogger.debug("removeEntriesByUnit: Removed entry for handle: " + handleId);
+                }
+            } catch (Exception e) {
+                EventLogger.debug("removeEntriesByUnit: Could not resolve handle: " + handleId + ", removing");
+                iterator.remove(); // Remove invalid handles
             }
         }
     }
@@ -328,6 +367,12 @@ public class EventIndexManager {
      * Notify all listeners about index changes
      */
     private void notifyListeners() {
+        // Skip notifications during batch operations
+        if (batchMode) {
+            EventLogger.debug("notifyListeners: Skipping notification (batch mode active)");
+            return;
+        }
+        
         EventLogger.debug("notifyListeners: Notifying " + this.listeners.size() + " listeners");
         for (IEventIndexChangeListener listener : this.listeners) {
             if (listener != null) {
@@ -338,6 +383,64 @@ public class EventIndexManager {
                 }
             }
         }
+        
+        // Auto-save index after changes
+        saveIndex();
+    }
+    
+    /**
+     * Saves index to JSON cache file.
+     */
+    public void saveIndex() {
+        try {
+            persistence.saveIndex(publishers, subscribers);
+        } catch (Exception e) {
+            EventLogger.error("saveIndex: Error saving index", e);
+        }
+    }
+    
+    /**
+     * Loads index from JSON cache file.
+     * 
+     * @return true if cache was loaded successfully
+     */
+    public boolean loadIndex() {
+        try {
+            EventLogger.info("loadIndex: Attempting to load index from cache");
+            
+            // Clear current index
+            clear();
+            
+            // Load from cache
+            boolean success = persistence.loadIndex(publishers, subscribers);
+            
+            if (success) {
+                EventLogger.info("loadIndex: Successfully loaded " + publishers.size() 
+                    + " publishers and " + subscribers.size() + " subscribers from cache");
+                notifyListeners();
+            } else {
+                EventLogger.info("loadIndex: Cache is empty or invalid");
+            }
+            
+            return success;
+        } catch (Exception e) {
+            EventLogger.error("loadIndex: Error loading index", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Checks if cache exists.
+     */
+    public boolean hasCachedIndex() {
+        return persistence.cacheExists();
+    }
+    
+    /**
+     * Clears the cache file.
+     */
+    public void clearCache() {
+        persistence.clearCache();
     }
     
     /**
