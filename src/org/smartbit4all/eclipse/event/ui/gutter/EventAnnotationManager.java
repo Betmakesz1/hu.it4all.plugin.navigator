@@ -158,10 +158,6 @@ public class EventAnnotationManager {
         log("Cleared all event annotations", IStatus.INFO);
     }
     
-    // ========================================================================
-    // Internal Helper Methods
-    // ========================================================================
-    
     /**
      * Get ICompilationUnit from editor.
      * @param editor The editor part
