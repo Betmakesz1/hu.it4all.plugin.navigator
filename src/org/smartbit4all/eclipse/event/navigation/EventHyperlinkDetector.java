@@ -36,6 +36,7 @@ import org.smartbit4all.eclipse.event.core.EventPluginProperties;
 import org.smartbit4all.eclipse.event.core.EventPublisherInfo;
 import org.smartbit4all.eclipse.event.core.EventSubscriberInfo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,49 +70,52 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
      */
     @Override
     public IHyperlink[] detectHyperlinks(ITextViewer textViewer, IRegion region, boolean canShowMultipleHyperlinks) {
-        
-        if (textViewer == null) {
-            return null;
-        }
-        
-        IDocument document = textViewer.getDocument();
-        if (document == null) {
-            return null;
-        }
-        
-        ICompilationUnit compilationUnit = getCompilationUnit();
-        if (compilationUnit == null) {
-            return null;
-        }
-        
-        // Parse the AST from the compilation unit
-        ASTParser parser = ASTParser.newParser(AST.JLS_Latest);
-        parser.setSource(compilationUnit);
-        parser.setResolveBindings(true);
-        parser.setStatementsRecovery(true);
-        
-        CompilationUnit ast = (CompilationUnit) parser.createAST(null);
-        if (ast == null) {
-            return null;
-        }
-        
-        ASTNode node = NodeFinder.perform(ast, region.getOffset(), region.getLength());
-        if (node == null) {
-            return null;
-        }
-        
-        ASTNode currentNode = node;
-        while (currentNode != null) {
-            if (isEventSubscriptionAnnotation(currentNode)) {
-                return createSubscriberToPublisherHyperlinks(currentNode, region);
+        try {
+            if (textViewer == null || region == null) {
+                return null;
             }
-            if (isPublisherInvocation(currentNode)) {
-                return createPublisherToSubscribersHyperlinks(currentNode, region);
+
+            IDocument document = textViewer.getDocument();
+            if (document == null) {
+                return null;
             }
-            currentNode = currentNode.getParent();
+
+            ICompilationUnit compilationUnit = getCompilationUnit();
+            if (compilationUnit == null) {
+                return null;
+            }
+
+            ASTParser parser = ASTParser.newParser(AST.JLS_Latest);
+            parser.setSource(compilationUnit);
+            parser.setResolveBindings(true);
+            parser.setStatementsRecovery(true);
+
+            CompilationUnit ast = (CompilationUnit) parser.createAST(null);
+            if (ast == null) {
+                return null;
+            }
+
+            ASTNode node = NodeFinder.perform(ast, region.getOffset(), region.getLength());
+            if (node == null) {
+                return null;
+            }
+
+            ASTNode currentNode = node;
+            while (currentNode != null) {
+                if (isEventSubscriptionAnnotation(currentNode)) {
+                    return createSubscriberToPublisherHyperlinks(currentNode, region);
+                }
+                if (isPublisherInvocation(currentNode)) {
+                    return createPublisherToSubscribersHyperlinks(currentNode, region);
+                }
+                currentNode = currentNode.getParent();
+            }
+
+            return null;
+        } catch (Exception e) {
+            EventLogger.error("EventHyperlinkDetector: Error during hyperlink detection", e);
+            return null;
         }
-        
-        return null;
     }
     
     /**
@@ -169,9 +173,18 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
         if (!(node instanceof MethodInvocation)) {
             return false;
         }
-        
+
+        if (PUBLISHER_METHOD_NAME == null || PUBLISHER_METHOD_NAME.isEmpty()) {
+            return false;
+        }
+
         MethodInvocation invocation = (MethodInvocation) node;
-        if (!PUBLISHER_METHOD_NAME.equals(invocation.getName().getIdentifier())) {
+        SimpleName invocationName = invocation.getName();
+        if (invocationName == null) {
+            return false;
+        }
+
+        if (!PUBLISHER_METHOD_NAME.equals(invocationName.getIdentifier())) {
             return false;
         }
         
@@ -201,7 +214,17 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
         }
         
         EventIndexManager indexManager = EventIndexManager.getInstance();
-        List<EventSubscriberInfo> subscribers = indexManager.findSubscribers(eventDef);
+        List<EventSubscriberInfo> indexedSubscribers = indexManager.findSubscribers(eventDef);
+        if (indexedSubscribers == null || indexedSubscribers.isEmpty()) {
+            return null;
+        }
+
+        List<EventSubscriberInfo> subscribers = new ArrayList<>();
+        for (EventSubscriberInfo subscriberInfo : indexedSubscribers) {
+            if (subscriberInfo != null) {
+                subscribers.add(subscriberInfo);
+            }
+        }
         
         if (subscribers == null || subscribers.isEmpty()) {
             return null;
@@ -215,7 +238,8 @@ public class EventHyperlinkDetector implements IHyperlinkDetector {
         IRegion hyperlinkRegion = new Region(regionOffset, regionLength);
 
         if (subscribers.size() == 1) {
-            Object methodObj = subscribers.get(0).getMethod();
+            EventSubscriberInfo subscriberInfo = subscribers.get(0);
+            Object methodObj = subscriberInfo.getMethod();
             if (methodObj instanceof IMethod) {
                 IMethod method = (IMethod) methodObj;
                 JavaElementHyperlink hyperlink = new JavaElementHyperlink(method, hyperlinkRegion);
