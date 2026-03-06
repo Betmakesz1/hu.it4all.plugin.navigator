@@ -1,11 +1,14 @@
 package org.smartbit4all.eclipse.event.core;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -29,6 +32,7 @@ public class EventIndexManager {
     private Map<String, EventDefinition> eventsByKey;
     private Map<String, EventPublisherInfo> publishers; // Key = IMethod.getHandleIdentifier()
     private Map<String, EventSubscriberInfo> subscribers; // Key = IMethod.getHandleIdentifier()
+    private Map<String, Long> fileFingerprints; // Key = ICompilationUnit path, value = modification stamp
     private List<IEventIndexChangeListener> listeners;
     
     // Persistence handler
@@ -42,6 +46,7 @@ public class EventIndexManager {
         this.eventsByKey = new HashMap<>();
         this.publishers = new HashMap<>();
         this.subscribers = new HashMap<>();
+        this.fileFingerprints = new HashMap<>();
         this.listeners = new ArrayList<>();
         this.persistence = new EventIndexPersistence();
     }
@@ -91,6 +96,73 @@ public class EventIndexManager {
     }
 
     /**
+     * Incrementally indexes the entire workspace by re-indexing only changed Java files.
+     *
+     * Files are identified by compilation-unit path and modification stamp fingerprint.
+     * Stale entries are removed for files that no longer exist.
+     */
+    public void indexWorkspaceIncremental() {
+        EventLogger.info("indexWorkspaceIncremental: Starting incremental workspace indexing");
+
+        boolean wasBatchMode = batchMode;
+        batchMode = true;
+
+        int scannedUnits = 0;
+        int reindexedUnits = 0;
+        Set<String> seenPaths = new HashSet<>();
+
+        try {
+            IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+            for (IProject project : projects) {
+                if (!project.isOpen()) {
+                    continue;
+                }
+                try {
+                    if (!project.hasNature(JavaCore.NATURE_ID)) {
+                        continue;
+                    }
+
+                    IJavaProject javaProject = JavaCore.create(project);
+                    IPackageFragment[] packages = javaProject.getPackageFragments();
+                    for (IPackageFragment pkg : packages) {
+                        if (pkg.getKind() != IPackageFragmentRoot.K_SOURCE) {
+                            continue;
+                        }
+
+                        ICompilationUnit[] units = pkg.getCompilationUnits();
+                        for (ICompilationUnit unit : units) {
+                            if (!unit.exists()) {
+                                continue;
+                            }
+
+                            scannedUnits++;
+                            String unitPath = getCompilationUnitPath(unit);
+                            if (unitPath != null) {
+                                seenPaths.add(unitPath);
+                            }
+
+                            if (indexCompilationUnitIfChanged(unit)) {
+                                reindexedUnits++;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    EventLogger.error("indexWorkspaceIncremental: Error indexing project " + project.getName(), e);
+                }
+            }
+
+            removeEntriesForMissingFiles(seenPaths);
+            EventLogger.info("indexWorkspaceIncremental: Scanned " + scannedUnits
+                + " files, re-indexed " + reindexedUnits + " changed files");
+        } finally {
+            batchMode = wasBatchMode;
+            if (!batchMode) {
+                notifyListeners();
+            }
+        }
+    }
+
+    /**
      * Index a specific project
      */
     public void indexProject(Object project) {
@@ -113,7 +185,7 @@ public class EventIndexManager {
                     ICompilationUnit[] units = pkg.getCompilationUnits();
                     for (ICompilationUnit unit : units) {
                         if (unit.exists()) {
-                            indexCompilationUnit(unit);
+                            indexCompilationUnitIfChanged(unit);
                         }
                     }
                 }
@@ -197,8 +269,32 @@ public class EventIndexManager {
         }
         
         // Step 4: Notify listeners about index change
+        String unitPath = getCompilationUnitPath(compilationUnit);
+        if (unitPath != null) {
+            fileFingerprints.put(unitPath, computeFingerprint(compilationUnit));
+        }
+
         notifyListeners();
         EventLogger.info("indexCompilationUnit: Completed for " + compilationUnit.getElementName());
+    }
+
+    /**
+     * Incrementally indexes a compilation unit only if fingerprint changed.
+     *
+     * @param unit compilation unit object
+     */
+    public void indexCompilationUnitIncremental(Object unit) {
+        if (!(unit instanceof ICompilationUnit)) {
+            EventLogger.debug("indexCompilationUnitIncremental: Invalid unit type, skipping");
+            return;
+        }
+
+        ICompilationUnit compilationUnit = (ICompilationUnit) unit;
+        if (!compilationUnit.exists()) {
+            return;
+        }
+
+        indexCompilationUnitIfChanged(compilationUnit);
     }
 
     /**
@@ -208,8 +304,31 @@ public class EventIndexManager {
         if (compilationUnit == null) {
             return;
         }
+
+        String unitPath = getCompilationUnitPath(compilationUnit);
+        if (unitPath != null) {
+            fileFingerprints.remove(unitPath);
+        }
+
         removeEntriesForCompilationUnit(compilationUnit);
         notifyListeners();
+    }
+
+    /**
+     * Remove indexed entries by workspace-relative compilation-unit path.
+     */
+    public void removeCompilationUnitByPath(String compilationUnitPath) {
+        if (compilationUnitPath == null || compilationUnitPath.isEmpty()) {
+            return;
+        }
+
+        boolean removedSubscriber = removeEntriesByCompilationUnitPath(this.subscribers, compilationUnitPath);
+        boolean removedPublisher = removeEntriesByCompilationUnitPath(this.publishers, compilationUnitPath);
+        fileFingerprints.remove(compilationUnitPath);
+
+        if (removedSubscriber || removedPublisher) {
+            notifyListeners();
+        }
     }
 
     /**
@@ -330,6 +449,88 @@ public class EventIndexManager {
             }
         }
     }
+
+    private <T> boolean removeEntriesByCompilationUnitPath(Map<String, T> map, String compilationUnitPath) {
+        boolean removed = false;
+        Iterator<Map.Entry<String, T>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, T> entry = iterator.next();
+            String handleId = entry.getKey();
+            try {
+                IMethod method = (IMethod) JavaCore.create(handleId);
+                if (method == null || method.getCompilationUnit() == null) {
+                    continue;
+                }
+
+                String methodUnitPath = getCompilationUnitPath(method.getCompilationUnit());
+                if (compilationUnitPath.equals(methodUnitPath)) {
+                    iterator.remove();
+                    removed = true;
+                }
+            } catch (Exception e) {
+                EventLogger.debug("removeEntriesByCompilationUnitPath: Could not resolve handle: " + handleId + ", removing");
+                iterator.remove();
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
+    private boolean indexCompilationUnitIfChanged(ICompilationUnit compilationUnit) {
+        String unitPath = getCompilationUnitPath(compilationUnit);
+        if (unitPath == null) {
+            indexCompilationUnit(compilationUnit);
+            return true;
+        }
+
+        long currentFingerprint = computeFingerprint(compilationUnit);
+        Long previousFingerprint = fileFingerprints.get(unitPath);
+        if (previousFingerprint != null && previousFingerprint.longValue() == currentFingerprint) {
+            return false;
+        }
+
+        indexCompilationUnit(compilationUnit);
+        return true;
+    }
+
+    private String getCompilationUnitPath(ICompilationUnit compilationUnit) {
+        if (compilationUnit == null || compilationUnit.getPath() == null) {
+            return null;
+        }
+        return compilationUnit.getPath().toString();
+    }
+
+    private long computeFingerprint(ICompilationUnit compilationUnit) {
+        try {
+            IResource resource = compilationUnit.getResource();
+            if (resource != null) {
+                return resource.getModificationStamp();
+            }
+        } catch (Exception e) {
+            EventLogger.debug("computeFingerprint: Failed to read resource modification stamp");
+        }
+        return -1L;
+    }
+
+    private void removeEntriesForMissingFiles(Set<String> seenPaths) {
+        if (seenPaths == null) {
+            return;
+        }
+
+        List<String> stalePaths = new ArrayList<>();
+        for (String trackedPath : fileFingerprints.keySet()) {
+            if (trackedPath != null && !seenPaths.contains(trackedPath)) {
+                stalePaths.add(trackedPath);
+            }
+        }
+
+        for (String stalePath : stalePaths) {
+            removeEntriesByCompilationUnitPath(this.subscribers, stalePath);
+            removeEntriesByCompilationUnitPath(this.publishers, stalePath);
+            fileFingerprints.remove(stalePath);
+            EventLogger.debug("removeEntriesForMissingFiles: Removed stale entries for " + stalePath);
+        }
+    }
     
     /**
      * Clear all index data structures
@@ -339,6 +540,7 @@ public class EventIndexManager {
         this.eventsByKey.clear();
         this.publishers.clear();
         this.subscribers.clear();
+        this.fileFingerprints.clear();
         // Note: listeners are NOT cleared - they should be persistent
         EventLogger.debug("clear: Index cleared");
     }
@@ -393,7 +595,7 @@ public class EventIndexManager {
      */
     public void saveIndex() {
         try {
-            persistence.saveIndex(publishers, subscribers);
+            persistence.saveIndex(publishers, subscribers, fileFingerprints);
         } catch (Exception e) {
             EventLogger.error("saveIndex: Error saving index", e);
         }
@@ -412,7 +614,7 @@ public class EventIndexManager {
             clear();
             
             // Load from cache
-            boolean success = persistence.loadIndex(publishers, subscribers);
+            boolean success = persistence.loadIndex(publishers, subscribers, fileFingerprints);
             
             if (success) {
                 EventLogger.info("loadIndex: Successfully loaded " + publishers.size() 

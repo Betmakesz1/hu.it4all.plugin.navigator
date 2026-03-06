@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IPath;
@@ -15,7 +13,9 @@ import org.eclipse.jdt.core.JavaCore;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * Handles JSON-based persistence for event index data.
@@ -25,9 +25,12 @@ public class EventIndexPersistence {
 
     private static final String INDEX_FILE_NAME = "event-index.json";
     private static final String STATE_LOCATION_PATH = "hu.it4all.plugin.navigator";
+    private static final String CACHE_SCHEMA_VERSION_PROPERTY = "event.index.cache.schema.version";
+    private static final String DEFAULT_CACHE_SCHEMA_VERSION = "1.0";
     
     private final Gson gson;
     private final File indexFile;
+    private final String expectedCacheSchemaVersion;
     
     /**
      * Creates persistence handler with default file location.
@@ -37,6 +40,7 @@ public class EventIndexPersistence {
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .create();
+        this.expectedCacheSchemaVersion = resolveExpectedCacheSchemaVersion();
         
         // Determine index file location in workspace metadata
         IPath stateLocation = Platform.getStateLocation(
@@ -58,7 +62,8 @@ public class EventIndexPersistence {
      * @return true if save was successful
      */
     public boolean saveIndex(Map<String, EventPublisherInfo> publishers, 
-                            Map<String, EventSubscriberInfo> subscribers) {
+                            Map<String, EventSubscriberInfo> subscribers,
+                            Map<String, Long> fileFingerprints) {
         try {
             EventLogger.info("EventIndexPersistence: Saving index to " + indexFile.getAbsolutePath());
             EventLogger.info("EventIndexPersistence: Publishers: " + publishers.size() + ", Subscribers: " + subscribers.size());
@@ -67,7 +72,8 @@ public class EventIndexPersistence {
             IndexData data = new IndexData();
             data.publishers = publishers;
             data.subscribers = subscribers;
-            data.version = "1.0";
+            data.fileFingerprints = fileFingerprints;
+            data.version = expectedCacheSchemaVersion;
             data.timestamp = System.currentTimeMillis();
             
             // Write to file
@@ -92,7 +98,8 @@ public class EventIndexPersistence {
      * @return true if load was successful
      */
     public boolean loadIndex(Map<String, EventPublisherInfo> publishers, 
-                            Map<String, EventSubscriberInfo> subscribers) {
+                            Map<String, EventSubscriberInfo> subscribers,
+                            Map<String, Long> fileFingerprints) {
         if (!indexFile.exists()) {
             EventLogger.info("EventIndexPersistence: Index file does not exist: " + indexFile.getAbsolutePath());
             return false;
@@ -102,14 +109,23 @@ public class EventIndexPersistence {
             EventLogger.info("EventIndexPersistence: Loading index from " + indexFile.getAbsolutePath());
             
             // Read from file
-            IndexData data;
+            JsonElement jsonRoot;
             try (FileReader reader = new FileReader(indexFile)) {
-                data = gson.fromJson(reader, IndexData.class);
+                jsonRoot = JsonParser.parseReader(reader);
             }
+
+            if (!isValidCacheStructure(jsonRoot)) {
+                return invalidateCacheAndFail("Schema mismatch or invalid JSON structure");
+            }
+
+            IndexData data = gson.fromJson(jsonRoot, IndexData.class);
             
             if (data == null) {
-                EventLogger.warn("EventIndexPersistence: Index file is empty or invalid");
-                return false;
+                return invalidateCacheAndFail("Parsed cache data is null");
+            }
+
+            if (data.publishers == null || data.subscribers == null || data.fileFingerprints == null) {
+                return invalidateCacheAndFail("Required cache sections are missing");
             }
             
             EventLogger.info("EventIndexPersistence: Loaded version " + data.version 
@@ -163,15 +179,77 @@ public class EventIndexPersistence {
                     }
                 }
             }
+
+            if (data.fileFingerprints != null) {
+                fileFingerprints.putAll(data.fileFingerprints);
+            }
             
             EventLogger.info("EventIndexPersistence: Loaded " + publishers.size() 
                 + " publishers and " + subscribers.size() + " subscribers");
             return true;
             
-        } catch (IOException e) {
+        } catch (Exception e) {
             EventLogger.error("EventIndexPersistence: Error loading index", e);
+            clearCache();
             return false;
         }
+    }
+
+    private boolean isValidCacheStructure(JsonElement root) {
+        if (root == null || !root.isJsonObject()) {
+            EventLogger.warn("EventIndexPersistence: Cache root is not a JSON object");
+            return false;
+        }
+
+        JsonObject object = root.getAsJsonObject();
+        if (!object.has("version") || !object.get("version").isJsonPrimitive()) {
+            EventLogger.warn("EventIndexPersistence: Missing or invalid 'version' field");
+            return false;
+        }
+
+        String version = object.get("version").getAsString();
+        if (!expectedCacheSchemaVersion.equals(version)) {
+            EventLogger.warn("EventIndexPersistence: Cache version mismatch. Expected "
+                + expectedCacheSchemaVersion + ", found " + version);
+            return false;
+        }
+
+        if (!object.has("publishers") || !object.get("publishers").isJsonObject()) {
+            EventLogger.warn("EventIndexPersistence: Missing or invalid 'publishers' section");
+            return false;
+        }
+
+        if (!object.has("subscribers") || !object.get("subscribers").isJsonObject()) {
+            EventLogger.warn("EventIndexPersistence: Missing or invalid 'subscribers' section");
+            return false;
+        }
+
+        if (!object.has("fileFingerprints") || !object.get("fileFingerprints").isJsonObject()) {
+            EventLogger.warn("EventIndexPersistence: Missing or invalid 'fileFingerprints' section");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean invalidateCacheAndFail(String reason) {
+        EventLogger.warn("EventIndexPersistence: Invalid cache - " + reason + ". Clearing cache file.");
+        clearCache();
+        return false;
+    }
+
+    private String resolveExpectedCacheSchemaVersion() {
+        String configuredVersion = EventPluginProperties.get(CACHE_SCHEMA_VERSION_PROPERTY);
+        if (configuredVersion == null) {
+            return DEFAULT_CACHE_SCHEMA_VERSION;
+        }
+
+        String trimmedVersion = configuredVersion.trim();
+        if (trimmedVersion.isEmpty()) {
+            return DEFAULT_CACHE_SCHEMA_VERSION;
+        }
+
+        return trimmedVersion;
     }
     
     /**
@@ -220,5 +298,6 @@ public class EventIndexPersistence {
         long timestamp;
         Map<String, EventPublisherInfo> publishers;
         Map<String, EventSubscriberInfo> subscribers;
+        Map<String, Long> fileFingerprints;
     }
 }

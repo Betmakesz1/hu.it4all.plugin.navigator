@@ -87,13 +87,12 @@ public class IndexWorkspaceHandler extends AbstractHandler {
                     
                     EventLogger.info("IndexJob: Project indexing complete: " + selectedProject.getName());
                 } else {
-                    // Index entire workspace (clear and rebuild)
+                    // Index entire workspace incrementally (re-index only changed files)
                     monitor.beginTask("Indexing workspace...", IProgressMonitor.UNKNOWN);
-                    
-                    // Use the indexWorkspace method which clears and rebuilds the entire index
-                    indexManager.indexWorkspace();
-                    
-                    EventLogger.info("IndexJob: Workspace indexing complete!");
+
+                    indexManager.indexWorkspaceIncremental();
+
+                    EventLogger.info("IndexJob: Incremental workspace indexing complete!");
                 }
                 
                 monitor.done();

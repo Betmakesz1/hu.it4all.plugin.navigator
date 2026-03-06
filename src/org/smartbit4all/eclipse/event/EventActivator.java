@@ -137,10 +137,10 @@ public class EventActivator extends AbstractUIPlugin {
                             EventLogger.info("EventActivator: No cache found, building index from scratch");
                         }
                         
-                        // Cache doesn't exist or load failed - do full indexing
+                        // Cache doesn't exist or load failed - do incremental workspace indexing
                         monitor.beginTask("Indexing workspace", IProgressMonitor.UNKNOWN);
-                        indexManager.indexWorkspace();
-                        EventLogger.info("EventActivator: Workspace index initialization complete");
+                        indexManager.indexWorkspaceIncremental();
+                        EventLogger.info("EventActivator: Incremental workspace index initialization complete");
                         
                         return Status.OK_STATUS;
                     } catch (Exception e) {

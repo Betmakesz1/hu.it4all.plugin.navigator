@@ -120,7 +120,7 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
                         handleFileChanged(compilationUnit);
                         break;
                     case IResourceDelta.REMOVED:
-                        handleFileRemoved(compilationUnit);
+                        handleFileRemoved(file, compilationUnit);
                         break;
                     default:
                         break;
@@ -145,7 +145,7 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
         
         // Index the new file
         EventIndexManager indexManager = EventIndexManager.getInstance();
-        indexManager.indexCompilationUnit(compilationUnit);
+        indexManager.indexCompilationUnitIncremental(compilationUnit);
         
         EventLogger.debug("EventResourceChangeListener: File indexed successfully");
     }
@@ -160,7 +160,7 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
         
         // Re-index the file (update existing entries)
         EventIndexManager indexManager = EventIndexManager.getInstance();
-        indexManager.indexCompilationUnit(compilationUnit);
+        indexManager.indexCompilationUnitIncremental(compilationUnit);
         
         EventLogger.debug("EventResourceChangeListener: File re-indexed successfully");
     }
@@ -170,11 +170,18 @@ public class EventResourceChangeListener implements IResourceChangeListener, IRe
      * 
      * @param compilationUnit the deleted compilation unit
      */
-    private void handleFileRemoved(ICompilationUnit compilationUnit) {
-        EventLogger.info("EventResourceChangeListener: File removed - removing from index: " + compilationUnit.getElementName());
+    private void handleFileRemoved(IFile file, ICompilationUnit compilationUnit) {
+        String unitPath = compilationUnit != null && compilationUnit.getPath() != null
+            ? compilationUnit.getPath().toString()
+            : (file != null && file.getFullPath() != null ? file.getFullPath().toString() : null);
+
+        EventLogger.info("EventResourceChangeListener: File removed - removing from index: "
+            + (unitPath != null ? unitPath : "unknown"));
 
         EventIndexManager indexManager = EventIndexManager.getInstance();
-        indexManager.removeCompilationUnit(compilationUnit);
+        if (unitPath != null) {
+            indexManager.removeCompilationUnitByPath(unitPath);
+        }
 
         EventLogger.debug("EventResourceChangeListener: Removed entries for deleted file");
     }

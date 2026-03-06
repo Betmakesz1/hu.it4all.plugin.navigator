@@ -84,7 +84,7 @@ public class EventPluginPreferencePage extends FieldEditorPreferencePage impleme
             public void widgetSelected(SelectionEvent e) {
                 EventLogger.info("EventPluginPreferencePage: User requested cache clear");
                 indexManager.clearCache();
-                indexManager.indexWorkspace();
+                indexManager.indexWorkspaceIncremental();
                 cacheInfoLabel.setText("Cache cleared - re-indexing workspace...");
             }
         });
